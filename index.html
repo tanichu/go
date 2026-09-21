@@ -18,6 +18,8 @@
 <script>
 // 入口。URL の # の後ろ（鍵[/パス]）はサーバに送られない。
 // targets.json には暗号文（AES-GCM）だけが名前なしで並ぶ。鍵で復号できたものへ移動する。
+// # の後ろだけが変わる移動ではページが読み直されないので、自分で読み直す
+addEventListener('hashchange', () => location.reload());
 (async () => {
   const m = document.getElementById('m');
   const frag = location.hash.slice(1);
