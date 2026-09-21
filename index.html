@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<title>…</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center;
+         font: 15px/1.6 system-ui, sans-serif; background: #f4f2ec; color: #555; }
+  @media (prefers-color-scheme: dark) { body { background: #16161b; color: #aaa; } }
+</style>
+</head>
+<body>
+<p id="m">…</p>
+<script>
+// 入口。URL の # の後ろ（鍵[/パス]）はサーバに送られない。
+// targets.json には暗号文（AES-GCM）だけが名前なしで並ぶ。鍵で復号できたものへ移動する。
+(async () => {
+  const m = document.getElementById('m');
+  const frag = location.hash.slice(1);
+  if (!frag) { m.textContent = ''; return; }
+  const cut = frag.indexOf('/');
+  const k = cut < 0 ? frag : frag.slice(0, cut);
+  const extra = cut < 0 ? '' : frag.slice(cut);
+  const b64 = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+  try {
+    const key = await crypto.subtle.importKey('raw', b64(k), 'AES-GCM', false, ['decrypt']);
+    const t = await (await fetch('targets.json?' + Date.now(), { cache: 'no-store' })).json();
+    for (const it of t.items) {
+      try {
+        const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(it.n) }, key, b64(it.c));
+        const d = JSON.parse(new TextDecoder().decode(pt));
+        location.replace(d.base + (extra || d.path || '/'));
+        return;
+      } catch (e) { /* 別の項目 */ }
+    }
+  } catch (e) { /* 鍵の形が不正 */ }
+  m.textContent = 'not found';
+})();
+</script>
+</body>
+</html>
